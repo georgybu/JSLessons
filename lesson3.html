@@ -1,0 +1,316 @@
+<html>
+<head>
+	<title>JS</title>
+	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+	<!--<link type="text/css" rel="StyleSheet" href="style.css">-->
+</head>
+<body>
+
+<script type="text/javascript">
+// ------------------------------------------------------------------------
+/*
+Lesson 3.
+@author Georgy Bunin
+
+@description
+    Lesson 3. Javascript Inheritance
+    Implementation
+
+@documentation:
+    This code work only with modern browsers with ECMA5 support
+        (ECMA5 dependenses: 
+            -> Object.create()
+            -> __defineSetter__
+        )
+
+    JS getters\setters: http://habrahabr.ru/post/108295/
+    JS simple inheritance: http://stackoverflow.com/questions/7486825/javascript-inheritance
+    JS Docs tag list: https://developers.google.com/closure/compiler/docs/js-for-compiler?hl=ru
+    Console API: http://getfirebug.com/wiki/index.php/Console_API   
+*/
+// ------------------------------------------------------------------------
+
+
+/**
+ * Animal Base Class.
+ * @param {number=} attack Some value (optional).    
+ * @param {number=} damage Some value (optional).    
+ * @param {number=} hearth Some value (optional).    
+ * @constructor
+ */
+var BaseAnimal = function(attack, damage, hearth) {
+    "use strict";
+
+    /**
+    * Default values (read-only).
+    * @protected
+    */
+    this._defaultValues = {
+        attackType : "empty",
+        damageStrength : 0,
+        hearth : 100
+    };
+    
+    // closure
+    function getID() { return (Math.round(((1+Math.random())*0x10000), 0)).toString(16).substring(1); }
+
+    this.unit = "Animal";
+
+    /**
+    * ID.
+    * @const
+    * @type {string}
+    * @protected
+    */
+    this._id = (getID() + getID() + getID());
+    this.__defineGetter__("id", function() { return this._id; });
+
+    /**
+    * attackType Type.
+    * @type {string|undefined}
+    * @protected
+    */
+    this._attackType = (typeof attack === "undefined") ? this._defaultValues.attackType : String(attack);
+    this.__defineGetter__("attackType", function() { return this._attackType; });
+    this.__defineSetter__("attackType", function(value) {
+        // simple validation
+        if (value !== "undefined") {
+            if (value.length > 0) {
+                this._attackType = String(value);   
+            } else {
+                this._attackType = this._defaultValues.attackType;  
+            }
+        } else {
+            this._attackType = this._defaultValues.attackType;  
+        }
+    });
+
+    /**
+    * Damage Strength.
+    * @type {number|undefined}
+    * @protected
+    */
+    this._damageStrength = (typeof damage === "undefined") ? this._defaultValues.damageStrength : damage;
+    this.__defineGetter__("damageStrength", function() { return this._damageStrength; });
+    this.__defineSetter__("damageStrength", function(value) {
+        var isValid = true;
+        
+        // validation
+        if (value === "undefined") { isValid = false; }
+        else {
+            if (!isNaN(parseFloat(value))) { isValid = false; }
+            else if (value < 0) { isValid = false; }
+        }
+
+        if (isValid) {
+            this._damageStrength = parseFloat(value);
+        } else {
+            this._damageStrength = this._defaultValues.damageStrength;
+        }
+    });
+
+    /**
+    * Hearth.
+    * @type {number|undefined}
+    * @protected
+    */
+    this._hearth = (typeof hearth === "undefined") ? this._defaultValues.hearth : hearth;
+    this.__defineGetter__("hearth", function() { return this._hearth; });
+    this.__defineSetter__("hearth", function(value) { this._hearth = value; });
+
+    /**
+    * Count of attacks.
+    * @type {number}
+    * @public
+    */
+    this.attacksCount = 0;
+
+    /**
+    * Count of defense.
+    * @type {number}
+    * @public
+    */
+    this.defenseCount = 0;
+
+    /**
+    * is alive (read only)
+    * @type {boolean}
+    * @public
+    */
+    this.__defineGetter__("isAlive", function() { return this.hearth > 0; });
+
+    /**
+    * name (read only)
+    * @type {string}
+    * @public
+    */
+    this.__defineGetter__("name", function() { return this.unit  + '[' + this.id +  ']'; });
+
+};
+
+BaseAnimal.prototype = {
+    Attack : function(otherAnimal, damageStrength) {
+        "use strict";
+        var damagePower = (typeof damageStrength === "undefined") ? this.damageStrength : damageStrength;
+        if (otherAnimal !== "undefined") {
+            if (otherAnimal instanceof BaseAnimal) {
+                if (otherAnimal === this) {
+                    console.log(this.name + 'attempts suicide... not good idea');
+                    return false;
+                } else {
+                    if (otherAnimal.isAlive) {
+                        var oldTargetHelth = otherAnimal.hearth;
+                        otherAnimal.hearth -= damagePower;
+                        console.log(this.name + ' attack ' + otherAnimal.name + '(' + oldTargetHelth + ' -> ' + otherAnimal.hearth + ')');
+                        this.attacksCount++;
+                        otherAnimal.defenseCount++;
+
+                        if (!otherAnimal.isAlive) {
+                            console.log(otherAnimal.name + 'is dead');
+                            otherAnimal.ShowStatistic();
+                        }
+                        return true;                    
+                    } else {
+                        console.log(this.name + ' attack dead target (' + otherAnimal.name + ')');
+                        return false;
+                    }                   
+                }
+            } else {
+                console.log(this.name + ' attack nobody');
+                return false;
+            }
+        } else {
+            console.log(this.name + ' attack nobody');  
+            return false;
+        }
+    },
+
+    ShowStatistic : function() {    
+        "use strict";
+        console.warn("Aminal name: %s\n\tAttack count: %i\n\tDefense count: %i", 
+            this.name, this.attacksCount, this.defenseCount 
+        );
+    }
+};
+
+
+var Dog = function() {
+    "use strict";    
+    // Parent constructor
+    BaseAnimal.call(this, "leg", 20, 500);
+    this.unit = "Dog";
+};
+
+// Inheritance
+Dog.prototype = Object.create(BaseAnimal.prototype);
+
+// Override
+Dog.prototype.Attack = function(otherAnimal) {
+    "use strict";
+    var that = this;
+    if (BaseAnimal.prototype.Attack.call(this, otherAnimal)) {
+        // probability 30%
+        if (Math.floor((Math.random()*100)+1) < 30) {
+            if (otherAnimal.isAlive) {
+                var SuperAttack = this.damageStrength * 2;
+                console.log(that.name + 'applied the super hit!!!');
+                BaseAnimal.prototype.Attack.call(this, otherAnimal, SuperAttack);   
+            }           
+        }
+    }   
+};
+
+var Cat = function() {
+    "use strict";
+    // Parent constructor
+    BaseAnimal.call(this, "claw", 25, 100 * 9); // has 9 lives
+    this.unit = "Cat";
+};
+
+// Inheritance
+Cat.prototype = Object.create(BaseAnimal.prototype);
+
+// Override
+Cat.prototype.Attack = function(otherAnimal) {
+    "use strict";
+    var that = this;
+    if (BaseAnimal.prototype.Attack.call(this, otherAnimal)) {
+        // probability 50%
+        if (Math.floor((Math.random()*100)+1) < 50) {
+            if (otherAnimal.isAlive) {
+                var SuperAttack = this.damageStrength * 1.5;
+                console.log(that.name + ' again attack. Its super power!');
+                BaseAnimal.prototype.Attack.call(this, otherAnimal, SuperAttack);   
+            }           
+        }
+    }   
+};
+
+var Mouse = function() {
+    "use strict";
+    // Parent constructor
+    BaseAnimal.call(this, "trick", 250, 430);
+    this.unit = "Mouse";
+};
+
+// Inheritance
+Mouse.prototype = Object.create(BaseAnimal.prototype);
+
+
+console.log('-------------------\nStart new battle!!\n-------------------');
+// game eingine
+var animals = ["mouse", "cat", "dog"];
+function getRandomAnimalType() { 
+    "use strict";
+    return animals[Math.floor(Math.random() * animals.length)]; 
+}
+
+var AliveAnimals = [];
+var DeadAnimals = [];
+
+function getAnimal(exclude) {
+    "use strict";
+    if (exclude  !== "undefined") {
+        var a = [];
+        for (var i = AliveAnimals.length - 1; i >= 0; i--) { 
+            if (AliveAnimals[i] !== exclude) { a.push(AliveAnimals[i]); }
+        }
+        return a[Math.floor(Math.random() * a.length)];
+    } else {
+        return AliveAnimals[Math.floor(Math.random() * AliveAnimals.length)];
+    }
+   
+}
+
+
+var AnimalCount = Math.floor((Math.random()*10)+1);
+for (var i = 5; i < (5 + AnimalCount); i++) {
+    if (getRandomAnimalType() === "cat") { AliveAnimals.push(new Cat()); }   
+    if (getRandomAnimalType() === "mouse") { AliveAnimals.push(new Mouse()); }   
+    if (getRandomAnimalType() === "dog") { AliveAnimals.push(new Dog()); }
+}
+
+console.log('Animals:');
+console.log(AliveAnimals);
+
+while (AliveAnimals.length > 1) {
+    var Attaker = getAnimal();
+    var Defender = getAnimal(Attaker);
+    Attaker.Attack(Defender);
+    if (Defender instanceof BaseAnimal) {
+        if (!Defender.isAlive) {
+            DeadAnimals.push(AliveAnimals[AliveAnimals.indexOf(Defender)]);
+            AliveAnimals.splice(AliveAnimals.indexOf(Defender), 1);
+        }       
+    }
+    if (AliveAnimals.length === 1) {
+        console.log(AliveAnimals[0].name + ' WIN!!!');
+    }
+}
+
+console.log('DeadAnimals:');
+console.log(DeadAnimals);
+</script>
+
+</body>
+</html>
